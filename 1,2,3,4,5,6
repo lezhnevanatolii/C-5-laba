@@ -1,0 +1,538 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <cstring>
+#include <random>
+#include <algorithm>
+#include <iomanip>
+#include <cctype>
+#include <climits>
+
+class FileOperations {
+private:
+    static std::mt19937 gen;
+    static std::uniform_int_distribution<int> dist;
+    
+    struct Toy {
+        char name[50];
+        double price;
+        int minAge;
+        int maxAge;
+    };
+
+public:
+    static void initializeRandom() {
+        std::random_device rd;
+        gen.seed(rd());
+        dist = std::uniform_int_distribution<int>(1, 100);
+    }
+
+    static int getRandomInt(int min, int max) {
+        std::uniform_int_distribution<int> localDist(min, max);
+        return localDist(gen);
+    }
+
+    static double getRandomDouble(double min, double max) {
+        std::uniform_real_distribution<double> localDist(min, max);
+        return localDist(gen);
+    }
+
+    static Task1() {
+        std::cout << "\n=== ЗАДАНИЕ 1 ===" << std::endl;
+        std::cout << "Бинарный файл с целыми числами" << std::endl;
+        
+        const char* filename = "task1_input.bin";
+        const char* outputFilename = "task1_output.bin";
+        
+        int k;
+        std::cout << "Введите число k (кратность): ";
+        std::cin >> k;
+        
+        if (k == 0) {
+            std::cout << "Ошибка: k не может быть равно 0" << std::endl;
+            return;
+        }
+        
+        std::ofstream outFile(filename, std::ios::binary);
+        if (!outFile) {
+            std::cout << "Ошибка создания файла" << std::endl;
+            return;
+        }
+        
+        int count = 20;
+        std::vector<int> numbers;
+        for (int i = 0; i < count; i++) {
+            int num = getRandomInt(1, 100);
+            numbers.push_back(num);
+        }
+        
+        outFile.write(reinterpret_cast<const char*>(numbers.data()), numbers.size() * sizeof(int));
+        outFile.close();
+        
+        std::ifstream inFile(filename, std::ios::binary);
+        std::ofstream resultFile(outputFilename, std::ios::binary);
+        
+        if (!inFile || !resultFile) {
+            std::cout << "Ошибка открытия файлов" << std::endl;
+            return;
+        }
+        
+        int num;
+        int foundCount = 0;
+        while (inFile.read(reinterpret_cast<char*>(&num), sizeof(int))) {
+            if (num % k == 0) {
+                resultFile.write(reinterpret_cast<const char*>(&num), sizeof(int));
+                foundCount++;
+            }
+        }
+        
+        inFile.close();
+        resultFile.close();
+        
+        std::cout << "Создан файл: " << filename << " с " << count << " числами" << std::endl;
+        std::cout << "Найдено " << foundCount << " чисел кратных " << k << std::endl;
+        std::cout << "Результат записан в: " << outputFilename << std::endl;
+    }
+
+    static Task2() {
+        std::cout << "\n=== ЗАДАНИЕ 2 ===" << std::endl;
+        std::cout << "Квадратная матрица из бинарного файла" << std::endl;
+        
+        const char* filename = "task2_input.bin";
+        
+        int n;
+        std::cout << "Введите размер матрицы n: ";
+        std::cin >> n;
+        
+        if (n <= 0) {
+            std::cout << "Ошибка: размер матрицы должен быть положительным" << std::endl;
+            return;
+        }
+        
+        std::ofstream outFile(filename, std::ios::binary);
+        if (!outFile) {
+            std::cout << "Ошибка создания файла" << std::endl;
+            return;
+        }
+        
+        int totalElements = n * n;
+        int fileElements = getRandomInt(totalElements / 2, totalElements);
+        
+        std::vector<int> numbers;
+        for (int i = 0; i < fileElements; i++) {
+            int num = getRandomInt(1, 50);
+            numbers.push_back(num);
+        }
+        
+        outFile.write(reinterpret_cast<const char*>(numbers.data()), numbers.size() * sizeof(int));
+        outFile.close();
+        
+        std::vector<std::vector<int>> matrix(n, std::vector<int>(n, 0));
+        
+        std::ifstream inFile(filename, std::ios::binary);
+        if (!inFile) {
+            std::cout << "Ошибка открытия файла" << std::endl;
+            return;
+        }
+        
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                int index = i * n + j;
+                if (index < fileElements) {
+                    int num;
+                    inFile.read(reinterpret_cast<char*>(&num), sizeof(int));
+                    matrix[i][j] = num;
+                }
+            }
+        }
+        inFile.close();
+        
+        std::cout << "\nИсходная матрица:" << std::endl;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                std::cout << std::setw(4) << matrix[i][j] << " ";
+            }
+            std::cout << std::endl;
+        }
+        
+        std::vector<int> columnSums(n, 0);
+        int minSum = INT_MAX;
+        int minSumCol = 0;
+        
+        for (int j = 0; j < n; j++) {
+            int sum = 0;
+            for (int i = 0; i < n; i++) {
+                sum += matrix[i][j];
+            }
+            columnSums[j] = sum;
+            if (sum < minSum) {
+                minSum = sum;
+                minSumCol = j;
+            }
+        }
+        
+        std::cout << "\nСуммы столбцов:" << std::endl;
+        for (int j = 0; j < n; j++) {
+            std::cout << "Столбец " << j << ": " << columnSums[j] << std::endl;
+        }
+        std::cout << "Минимальная сумма в столбце " << minSumCol << ": " << minSum << std::endl;
+        
+        std::vector<std::vector<int>> newMatrix = matrix;
+        
+        for (int j = 0; j < n; j++) {
+            if (j != minSumCol) {
+                for (int i = 0; i < n; i++) {
+                    newMatrix[i][j] = matrix[i][minSumCol];
+                }
+            }
+        }
+        
+        std::cout << "\nМатрица после замены:" << std::endl;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                std::cout << std::setw(4) << newMatrix[i][j] << " ";
+            }
+            std::cout << std::endl;
+        }
+        
+        const char* outputFilename = "task2_output.bin";
+        std::ofstream resultFile(outputFilename, std::ios::binary);
+        for (int i = 0; i < n; i++) {
+            resultFile.write(reinterpret_cast<const char*>(newMatrix[i].data()), n * sizeof(int));
+        }
+        resultFile.close();
+        
+        std::cout << "Результат записан в: " << outputFilename << std::endl;
+    }
+
+    static Task3() {
+        std::cout << "\n=== ЗАДАНИЕ 3 ===" << std::endl;
+        std::cout << "Структуры: игрушки" << std::endl;
+        
+        const char* filename = "task3_toys.bin";
+        
+        std::ofstream outFile(filename, std::ios::binary);
+        if (!outFile) {
+            std::cout << "Ошибка создания файла" << std::endl;
+            return;
+        }
+        
+        Toy toys[10];
+        const char* toyNames[] = {"Конструктор LEGO", "Машинка", "Кукла", "Пазл", 
+                                 "Конструктор металлический", "Мяч", "Настольная игра", 
+                                 "Конструктор магнитный", "Кубики", "Робот"};
+        
+        for (int i = 0; i < 10; i++) {
+            strcpy(toys[i].name, toyNames[i]);
+            toys[i].price = getRandomDouble(100.0, 5000.0);
+            toys[i].minAge = getRandomInt(1, 5);
+            toys[i].maxAge = toys[i].minAge + getRandomInt(1, 5);
+        }
+        
+        outFile.write(reinterpret_cast<const char*>(toys), 10 * sizeof(Toy));
+        outFile.close();
+        
+        std::ifstream inFile(filename, std::ios::binary);
+        if (!inFile) {
+            std::cout << "Ошибка открытия файла" << std::endl;
+            return;
+        }
+        
+        Toy currentToy;
+        double maxConstructorPrice = 0.0;
+        std::string maxConstructorName;
+        
+        std::cout << "\nВсе игрушки:" << std::endl;
+        std::cout << std::left << std::setw(25) << "Название" 
+                  << std::setw(10) << "Цена" 
+                  << std::setw(15) << "Возраст" << std::endl;
+        std::cout << std::string(50, '-') << std::endl;
+        
+        while (inFile.read(reinterpret_cast<char*>(&currentToy), sizeof(Toy))) {
+            std::string nameStr(currentToy.name);
+            std::string ageRange = std::to_string(currentToy.minAge) + "-" + 
+                                  std::to_string(currentToy.maxAge);
+            
+            std::cout << std::left << std::setw(25) << nameStr
+                      << std::setw(10) << std::fixed << std::setprecision(2) << currentToy.price
+                      << std::setw(15) << ageRange << std::endl;
+            
+            if (nameStr.find("Конструктор") != std::string::npos) {
+                if (currentToy.price > maxConstructorPrice) {
+                    maxConstructorPrice = currentToy.price;
+                    maxConstructorName = nameStr;
+                }
+            }
+        }
+        
+        inFile.close();
+        
+        std::cout << "\nРезультат:" << std::endl;
+        if (maxConstructorPrice > 0) {
+            std::cout << "Самый дорогой конструктор: " << maxConstructorName 
+                      << " за " << maxConstructorPrice << " руб." << std::endl;
+        } else {
+            std::cout << "Конструкторы не найдены" << std::endl;
+        }
+    }
+
+    static Task4() {
+        std::cout << "\n=== ЗАДАНИЕ 4 ===" << std::endl;
+        std::cout << "Текстовый файл: числа равные индексу" << std::endl;
+        
+        const char* filename = "task4_numbers.txt";
+        
+        std::ofstream outFile(filename);
+        if (!outFile) {
+            std::cout << "Ошибка создания файла" << std::endl;
+            return;
+        }
+        
+        int count = 30;
+        for (int i = 0; i < count; i++) {
+            outFile << getRandomInt(0, count) << std::endl;
+        }
+        outFile.close();
+        
+        std::ifstream inFile(filename);
+        if (!inFile) {
+            std::cout << "Ошибка открытия файла" << std::endl;
+            return;
+        }
+        
+        int sum = 0;
+        int index = 0;
+        int num;
+        
+        std::cout << "Числа равные своему индексу:" << std::endl;
+        while (inFile >> num) {
+            if (num == index) {
+                std::cout << "Индекс " << index << ": число " << num << std::endl;
+                sum += num;
+            }
+            index++;
+        }
+        
+        inFile.close();
+        
+        std::cout << "Сумма чисел, равных своему индексу: " << sum << std::endl;
+        
+        const char* resultFilename = "task4_result.txt";
+        std::ofstream resultFile(resultFilename);
+        resultFile << "Сумма: " << sum << std::endl;
+        resultFile.close();
+        
+        std::cout << "Результат записан в: " << resultFilename << std::endl;
+    }
+
+    static Task5() {
+        std::cout << "\n=== ЗАДАНИЕ 5 ===" << std::endl;
+        std::cout << "Текстовый файл: произведение кратных чисел" << std::endl;
+        
+        const char* filename = "task5_numbers.txt";
+        
+        int k;
+        std::cout << "Введите число k: ";
+        std::cin >> k;
+        
+        if (k == 0) {
+            std::cout << "Ошибка: k не может быть равно 0" << std::endl;
+            return;
+        }
+        
+        std::ofstream outFile(filename);
+        if (!outFile) {
+            std::cout << "Ошибка создания файла" << std::endl;
+            return;
+        }
+        
+        int lines = 10;
+        for (int i = 0; i < lines; i++) {
+            int numbersInLine = getRandomInt(1, 5);
+            for (int j = 0; j < numbersInLine; j++) {
+                outFile << getRandomInt(1, 50) << " ";
+            }
+            outFile << std::endl;
+        }
+        outFile.close();
+        
+        std::ifstream inFile(filename);
+        if (!inFile) {
+            std::cout << "Ошибка открытия файла" << std::endl;
+            return;
+        }
+        
+        long long product = 1;
+        bool found = false;
+        std::string line;
+        int lineNum = 1;
+        
+        std::cout << "\nЧисла кратные " << k << ":" << std::endl;
+        while (std::getline(inFile, line)) {
+            std::stringstream ss(line);
+            int num;
+            while (ss >> num) {
+                if (num % k == 0) {
+                    std::cout << "Строка " << lineNum << ": " << num << std::endl;
+                    product *= num;
+                    found = true;
+                }
+            }
+            lineNum++;
+        }
+        
+        inFile.close();
+        
+        std::cout << "\nПроизведение чисел, кратных " << k << ": ";
+        if (found) {
+            std::cout << product << std::endl;
+        } else {
+            std::cout << "не найдено" << std::endl;
+        }
+        
+        const char* resultFilename = "task5_result.txt";
+        std::ofstream resultFile(resultFilename);
+        resultFile << "Произведение: " << product << std::endl;
+        resultFile.close();
+        
+        std::cout << "Результат записан в: " << resultFilename << std::endl;
+    }
+
+    static Task6() {
+        std::cout << "\n=== ЗАДАНИЕ 6 ===" << std::endl;
+        std::cout << "Текстовый файл: строки без русских букв" << std::endl;
+        
+        const char* filename = "task6_text.txt";
+        const char* outputFilename = "task6_result.txt";
+        
+        std::ofstream outFile(filename);
+        if (!outFile) {
+            std::cout << "Ошибка создания файла" << std::endl;
+            return;
+        }
+        
+        const char* lines[] = {
+            "Hello world!",
+            "Привет мир!",
+            "12345 test",
+            "Это русский текст",
+            "English only here",
+            "Смешанный mixed текст",
+            "No russian letters",
+            "Только русские слова",
+            "ASCII characters: !@#$%",
+            "Последняя строка"
+        };
+        
+        for (int i = 0; i < 10; i++) {
+            outFile << lines[i] << std::endl;
+        }
+        outFile.close();
+        
+        std::ifstream inFile(filename);
+        std::ofstream resultFile(outputFilename);
+        
+        if (!inFile || !resultFile) {
+            std::cout << "Ошибка открытия файлов" << std::endl;
+            return;
+        }
+        
+        std::string line;
+        int copiedCount = 0;
+        
+        std::cout << "\nИсходные строки:" << std::endl;
+        while (std::getline(inFile, line)) {
+            std::cout << line << std::endl;
+        }
+        inFile.clear();
+        inFile.seekg(0);
+        
+        std::cout << "\nСтроки без русских букв:" << std::endl;
+        while (std::getline(inFile, line)) {
+            bool hasRussian = false;
+            
+            for (char c : line) {
+                if ((c >= 'А' && c <= 'я') || c == 'Ё' || c == 'ё') {
+                    hasRussian = true;
+                    break;
+                }
+            }
+            
+            if (!hasRussian) {
+                std::cout << line << std::endl;
+                resultFile << line << std::endl;
+                copiedCount++;
+            }
+        }
+        
+        inFile.close();
+        resultFile.close();
+        
+        std::cout << "\nСкопировано " << copiedCount << " строк" << std::endl;
+        std::cout << "Результат записан в: " << outputFilename << std::endl;
+    }
+};
+
+std::mt19937 FileOperations::gen;
+std::uniform_int_distribution<int> FileOperations::dist;
+
+int main() {
+    std::cout << "ЛАБОРАТОРНАЯ РАБОТА №5 - РАБОТА С ФАЙЛАМИ" << std::endl;
+    std::cout << "==========================================" << std::endl;
+    
+    FileOperations::initializeRandom();
+    
+    int choice;
+    do {
+        std::cout << "\nМЕНЮ:" << std::endl;
+        std::cout << "1 - Задание 1 (бинарные файлы, кратные числа)" << std::endl;
+        std::cout << "2 - Задание 2 (бинарные файлы, матрица)" << std::endl;
+        std::cout << "3 - Задание 3 (структуры, игрушки)" << std::endl;
+        std::cout << "4 - Задание 4 (текстовые файлы, сумма)" << std::endl;
+        std::cout << "5 - Задание 5 (текстовые файлы, произведение)" << std::endl;
+        std::cout << "6 - Задание 6 (текстовые файлы, строки)" << std::endl;
+        std::cout << "0 - Выход" << std::endl;
+        std::cout << "Выберите задание: ";
+        std::cin >> choice;
+        
+        switch (choice) {
+            case 1:
+                FileOperations::Task1();
+                break;
+            case 2:
+                FileOperations::Task2();
+                break;
+            case 3:
+                FileOperations::Task3();
+                break;
+            case 4:
+                FileOperations::Task4();
+                break;
+            case 5:
+                FileOperations::Task5();
+                break;
+            case 6:
+                FileOperations::Task6();
+                break;
+            case 0:
+                std::cout << "Выход из программы..." << std::endl;
+                break;
+            default:
+                std::cout << "Неверный выбор. Попробуйте снова." << std::endl;
+        }
+        
+        if (choice != 0) {
+            std::cout << "\nНажмите Enter для продолжения...";
+            std::cin.ignore();
+            std::cin.get();
+        }
+        
+    } while (choice != 0);
+    
+    std::cout << "\nПрограмма завершена. Нажмите Enter для выхода...";
+    std::cin.ignore();
+    std::cin.get();
+    
+    return 0;
+}
